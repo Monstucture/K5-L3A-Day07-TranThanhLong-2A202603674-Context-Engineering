@@ -1,10 +1,11 @@
-"""Retrieval-only benchmark: tfidf | dense | dense_filter | hybrid | dense_rerank."""
-import argparse, json, statistics, time
+"""Retrieval-only benchmark: tfidf | bm25 | dense | dense_filter | hybrid | hybrid_bm25 | dense_rerank."""
+import argparse, json, math, statistics, time
+from collections import Counter, defaultdict
 from pathlib import Path
-from baseline import TfidfIndex, hit, pack_context
+from baseline import TfidfIndex, hit, pack_context, tokenize
 
 ROOT = Path(__file__).resolve().parents[1]
-METHODS = ("tfidf", "dense", "dense_filter", "hybrid", "dense_rerank")
+METHODS = ("tfidf", "bm25", "dense", "dense_filter", "hybrid", "hybrid_bm25", "dense_rerank")
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"  # small English cross-encoder, runs on CPU
 
 
@@ -14,6 +15,31 @@ class Tfidf:
 
     def search(self, query, *, filters=None, top_k=3):
         return self.index.search(query, top_k=top_k)
+
+
+class Bm25:
+    """Okapi BM25 over the same tokenizer as TF-IDF: saturates repeated terms and normalizes chunk length."""
+
+    def __init__(self, chunks, k1=1.5, b=0.75):
+        self.chunks, self.k1, self.b = chunks, k1, b
+        docs = [Counter(tokenize(c["text"])) for c in chunks]
+        self.lengths = [sum(d.values()) for d in docs]
+        self.avg_len = statistics.mean(self.lengths) or 1
+        self.postings = defaultdict(list)  # term -> [(chunk index, term count)]
+        for i, d in enumerate(docs):
+            for term, tf in d.items():
+                self.postings[term].append((i, tf))
+        n = len(chunks)
+        self.idf = {t: math.log(1 + (n - len(p) + 0.5) / (len(p) + 0.5)) for t, p in self.postings.items()}
+
+    def search(self, query, *, filters=None, top_k=3):
+        scores = defaultdict(float)
+        for term in set(tokenize(query)):
+            for i, tf in self.postings.get(term, ()):
+                norm = self.k1 * (1 - self.b + self.b * self.lengths[i] / self.avg_len)
+                scores[i] += self.idf[term] * tf * (self.k1 + 1) / (tf + norm)
+        ranked = sorted(scores.items(), key=lambda x: (-x[1], self.chunks[x[0]]["id"]))[:top_k]
+        return [{**self.chunks[i], "score": s} for i, s in ranked]
 
 
 def rrf(*rankings, k=60, weights=None):
@@ -30,12 +56,14 @@ def rrf(*rankings, k=60, weights=None):
 
 
 class Hybrid:
-    def __init__(self, dense, tfidf, pool=20, lexical_weight=1.0):
-        self.dense, self.tfidf, self.pool, self.lexical_weight = dense, tfidf, pool, lexical_weight
+    """Dense + a lexical retriever (TF-IDF or BM25), fused with weighted RRF."""
+
+    def __init__(self, dense, lexical, pool=20, lexical_weight=1.0):
+        self.dense, self.lexical, self.pool, self.lexical_weight = dense, lexical, pool, lexical_weight
 
     def search(self, query, *, filters=None, top_k=3):
         return rrf(self.dense.search(query, filters=filters, top_k=self.pool),
-                   self.tfidf.search(query, top_k=self.pool),
+                   self.lexical.search(query, top_k=self.pool),
                    weights=[1.0, self.lexical_weight])[:top_k]
 
 
@@ -64,10 +92,14 @@ class Rerank:
 def make(method, chunks, lexical_weight=1.0, rerank_model=RERANK_MODEL, pool=20):
     if method == "tfidf":
         return Tfidf(chunks)
-    from day6_retriever import Day6Retriever  # imported here so tests and TF-IDF runs need no Day 6 setup
+    if method == "bm25":
+        return Bm25(chunks)
+    from day6_retriever import Day6Retriever  # imported here so tests and lexical runs need no Day 6 setup
     dense = Day6Retriever()
-    if method == "hybrid":
+    if method == "hybrid":  # kept with TF-IDF so the earlier dev-hybrid result stays reproducible
         return Hybrid(dense, Tfidf(chunks), pool=pool, lexical_weight=lexical_weight)
+    if method == "hybrid_bm25":
+        return Hybrid(dense, Bm25(chunks), pool=pool, lexical_weight=lexical_weight)
     if method == "dense_rerank":
         return Rerank(dense, rerank_model, pool=pool)
     return dense
@@ -103,7 +135,7 @@ def main():
                        "context_hit": any(c["hit"] and c["id"] in ids for c in marked)})
     n = len(traces)
     summary = {"method": a.method, "split": a.split, "top_k": a.top_k, "budget": a.budget, "n": n,
-               **({"pool": a.pool, "lexical_weight": a.lexical_weight} if a.method == "hybrid" else {}),
+               **({"pool": a.pool, "lexical_weight": a.lexical_weight} if a.method in ("hybrid", "hybrid_bm25") else {}),
                **({"pool": a.pool, "rerank_model": a.rerank_model} if a.method == "dense_rerank" else {}),
                **{m: f"{sum(t[m] for t in traces)}/{n}" for m in ("hit1", "hit3", "context_hit")},
                "median_ms": statistics.median(t["ms"] for t in traces)}

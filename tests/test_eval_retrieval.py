@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'starter'))
-from eval_retrieval import Hybrid, Rerank, rrf
+from eval_retrieval import Bm25, Hybrid, Rerank, rrf
 
 
 def c(id):
@@ -35,6 +35,16 @@ class EvalRetrievalTests(unittest.TestCase):
     def test_hybrid_passes_lexical_weight(self):
         h = Hybrid(FakeRetriever(['d1', 'x']), FakeRetriever(['l1', 'x']), lexical_weight=0.0)
         self.assertEqual([r['id'] for r in h.search('q', top_k=2)], ['d1', 'x'])
+
+    def test_bm25_ranks_matching_chunk_and_skips_non_matching(self):
+        chunks = [{'id': 'a', 'text': 'ionic bond between cation and anion'},
+                  {'id': 'b', 'text': 'covalent bond shares electrons'},
+                  {'id': 'c', 'text': 'the heart pumps blood'}]
+        bm25 = Bm25(chunks)
+        out = bm25.search('cation anion', top_k=3)
+        self.assertEqual([r['id'] for r in out], ['a'])  # only chunks containing a query term
+        self.assertGreater(out[0]['score'], 0)
+        self.assertEqual(bm25.search('kidney'), [])
 
     def test_rerank_reorders_and_keeps_first_stage_rank(self):
         r = object.__new__(Rerank)  # skip loading a real model
