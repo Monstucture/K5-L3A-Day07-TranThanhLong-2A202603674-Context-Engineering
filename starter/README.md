@@ -9,7 +9,7 @@
 | `day6_retriever.py` | Dense retriever: import `MyEmbedder` và `PgVectorStore` từ repo Day 6, trả chunk theo schema Day 7 |
 | `day6_export.py` | Xuất chunk strategy B từ pgvector Day 6 ra `data/day6_chunks.json` |
 | `make_cases.py` | Gộp câu có đáp án và câu thiếu evidence thành `data/cases.json` (không chứa gold) |
-| `eval_retrieval.py` | Benchmark retrieval: `tfidf`, `dense`, `dense_filter`, `hybrid` (RRF) |
+| `eval_retrieval.py` | Benchmark retrieval: `tfidf`, `bm25`, `dense`, `dense_filter`, `hybrid` (RRF + TF-IDF), `hybrid_bm25` (RRF có trọng số + BM25), `dense_rerank` |
 | `llm_controller.py` | `Controller.decide` dùng LLM thật qua API tương thích OpenAI, một tool `search` |
 | `run_agent_bench.py` | Chạy agent trên một split, ghi `traces.json` cho `agent_metrics.py` |
 
@@ -93,8 +93,10 @@ python starter/eval_retrieval.py --method dense --split dev --budget 2000 --outp
 Cải thiện thêm:
 
 ```bash
-# Hybrid có trọng số: RRF với dense = 1.0, TF-IDF = 0.3
-python starter/eval_retrieval.py --method hybrid --lexical-weight 0.3 --split dev --output starter/results/dev-hybrid-w03
+# BM25 (lexical, thay TF-IDF): chạy riêng để so sánh với TF-IDF
+python starter/eval_retrieval.py --method bm25 --split dev --output starter/results/dev-bm25
+# Hybrid có trọng số dùng BM25: RRF với dense = 1.0, BM25 = 0.3
+python starter/eval_retrieval.py --method hybrid_bm25 --lexical-weight 0.3 --split dev --output starter/results/dev-hybrid-bm25-w03
 # Rerank: dense lấy 20 candidate, cross-encoder xếp lại, giữ top-3 (cần: pip install sentence-transformers)
 python starter/eval_retrieval.py --method dense_rerank --split dev --output starter/results/dev-dense-rerank
 ```
