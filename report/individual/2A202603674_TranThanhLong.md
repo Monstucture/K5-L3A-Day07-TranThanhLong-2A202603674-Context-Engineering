@@ -69,18 +69,46 @@ Tất cả chạy bằng `starter/eval_retrieval.py` trên cùng corpus (7768 ch
 ## Agent và đánh giá
 
 - **Tool, số lượt gọi, điều kiện dừng, cách chọn context và xử lý lỗi:** Agent dùng khung `run_agent` trong `starter/agentic.py` với controller `LLMController` (`starter/llm_controller.py`). Một tool `search(query)` gọi retriever đã chọn. Tối đa 4 lượt search (`--max-searches 4`), top-3 mỗi lượt; context là các chunk tích lũy qua các lượt, loại trùng ID, cắt theo budget ký tự (`pack_context`). Model phải trả lời kèm citation `[chunk-id]` hoặc trả `INSUFFICIENT_EVIDENCE`. `run_agent` chuyển thành **abstain** khi: không có citation, citation không nằm trong context, hoặc hết số lượt search. Lỗi model/vector store được ghi `status: "error"` kèm thông báo lỗi trong trace (`starter/run_agent_bench.py`), không thay bằng câu trả lời giả. Nội dung tài liệu được chỉ định là dữ liệu, không phải chỉ dẫn (system prompt).
-- **Lần chạy hiện tại:** lần chạy dev đầu tiên lỗi ngay ở q01: `APIStatusError 402 – This request requires more credits, or fewer max_tokens` (OpenRouter giữ chỗ max_tokens mặc định lớn hơn số credit). Đã thêm `max_tokens=512` (commit `3a75587`). *TODO – cần chạy:* agent trên dev cho baseline TF-IDF và cấu hình đã chọn (dense, budget 2000).
+- **Xử lý lỗi provider:** khi API trả 429 (rate limit) hoặc 503 (quá tải), controller chờ 60/60/120/120 giây rồi thử lại; nếu vẫn lỗi, câu được ghi `status: "error"`. Thời gian chờ ghi riêng (`rate_limit_wait_s`) và không tính vào `seconds`. Ở 4 lần chạy cuối (gpt-4o-mini): **0 lỗi**, 0 giây chờ.
 
 | Cấu hình / split | Tool use | Số lượt gọi | Grounded answer 0/1/2 và trung bình | Citation hợp lệ | Câu có citation | Abstention đúng | Từ chối nhầm |
 |---|---|---|---|---|---|---|---|
-| Baseline TF-IDF / dev | *TODO – cần chạy agent + chấm nhãn* | | | | | | |
-| Dense 2000 (đã chọn) / dev | *TODO – cần chạy agent + chấm nhãn* | | | | | | |
-| Baseline TF-IDF / test | *TODO – cần chạy agent + chấm nhãn* | | | | | | |
-| Dense 2000 (đã chọn) / test | *TODO – cần chạy agent + chấm nhãn* | | | | | | |
+| Baseline TF-IDF / dev | 26/26 (100%) | 1: 8 · 2: 4 · 4: 14; TB 2,77 | *chờ chấm nhãn* | *chờ chấm nhãn* (13 citation) | 11/11 câu trả lời | *chờ xác nhận* (2/2 từ chối theo status) | 13/24 (54,2%) |
+| Dense 2000 (đã chọn) / dev | 26/26 (100%) | 1: 17 · 2: 2 · 3: 3 · 4: 4; TB 1,77 | *chờ chấm nhãn* | *chờ chấm nhãn* (34 citation) | 20/20 câu trả lời | *chờ xác nhận* (2/2 từ chối theo status) | 4/24 (16,7%) |
+| Baseline TF-IDF / test | 16/16 (100%) | 2: 1 · 3: 1 · 4: 14; TB 3,81 | *chờ chấm nhãn* | *chờ chấm nhãn* (2 citation) | 2/2 câu trả lời | *chờ xác nhận* (6/6 từ chối theo status) | 8/10 (80,0%) |
+| Dense 2000 (đã chọn) / test | 16/16 (100%) | 1: 9 · 2: 1 · 3: 2 · 4: 4; TB 2,06 | *chờ chấm nhãn* | *chờ chấm nhãn* (17 citation) | 10/10 câu trả lời | *chờ xác nhận* (6/6 từ chối theo status) | 0/10 (0%) |
+
+*Cách đọc:* "Số lượt gọi" là phân bố số lần gọi tool `search` mỗi câu (số lần : số câu). "Từ chối nhầm" = số câu có đáp án mà agent từ chối / tổng câu có đáp án, tính trực tiếp từ status. Hai cột Grounded answer và Citation hợp lệ cần chấm tay (`reviews.json`); cột Abstention đúng hiện chỉ đếm theo status, người chấm cần xác nhận agent thực sự không đưa khẳng định vô căn cứ.
+
+**Chỉ số tính tự động từ trace (chưa phải nhãn chấm tay):**
+
+| Cấu hình / split | Trả lời / câu có đáp án | Evidence gold trong context cuối | Câu trả lời trích dẫn chunk chứa evidence gold | Dừng do hết lượt search | Token (tổng / TB mỗi câu) | Thời gian mỗi câu (median) |
+|---|---|---|---|---|---|---|
+| Baseline TF-IDF / dev | 11/24 | 8/24 | 7/11 | 14/26 | 33 664 / 1 295 | 4,5 s |
+| Dense 2000 / dev | 20/24 | 19/24 | 17/20 | 4/26 | 35 916 / 1 381 | 3,6 s |
+| Baseline TF-IDF / test | 2/10 | 1/10 | 1/2 | 14/16 | 25 772 / 1 611 | 4,8 s |
+| Dense 2000 / test | 10/10 | 10/10 | 9/10 | 4/16 | 21 196 / 1 325 | 3,6 s |
+
+"Trích dẫn chunk chứa evidence gold" chỉ kiểm tra ID và khớp chuỗi; không thay việc đọc xem citation có hỗ trợ toàn bộ câu trả lời. Chi phí: *TODO – nhân tổng token với giá gpt-4o-mini hiện hành* (trace chỉ ghi tổng token, không tách input/output).
+
+**Nhận xét:**
+
+- **Dense giúp agent trả lời nhiều hơn rõ rệt:** test 10/10 câu có đáp án được trả lời (TF-IDF 2/10), không từ chối nhầm câu nào; dev từ chối nhầm 4/24 (q10, q13, q24, q33) so với 13/24 của TF-IDF.
+- **Lỗi của baseline TF-IDF – hết lượt search:** ở test, 14/16 câu dừng vì dùng hết 4 lượt search. Agent lặp gần như cùng một query (ví dụ q09 gọi 4 lần "six levels of structural organization of the human body"), vì với budget 800 các chunk của lượt đầu chiếm hết context nên lượt sau không thêm được evidence mới (giới hạn đã nêu trong `starter/README.md`). Dense 2000 chỉ hết lượt ở 4/16 câu.
+- **Câu thiếu evidence:** cả hai cấu hình từ chối 2/2 (dev) và 6/6 (test) theo status. Do phần lớn câu thiếu evidence nằm ngoài chủ đề sách, kết quả này chưa chứng minh agent từ chối tốt với câu gần chủ đề.
+- **Chi phí/thời gian:** dense dùng số token tương đương TF-IDF (TB ~1 300–1 400 token mỗi câu) dù context dài hơn, vì cần ít lượt search hơn (TB 2,06 so với 3,81 ở test), và nhanh hơn (median 3,6 s so với 4,8 s).
 
 | Query ID | Loại câu | Tool call và kết quả | Câu trả lời và citation | Nhãn, lý do |
 |---|---|---|---|---|
-| *TODO – cần chạy agent trên test và chấm tay* (≥5 câu test có đáp án + 2 câu thiếu evidence) | | | | |
+| q04 (test, dense) | metadata_filter | 1 search "increasing pressure effects on reactions" → `s2.3:c024`, `s2.3:c022`, `s22.3:c012` | Tăng áp suất làm phản ứng nhanh hơn do tăng mật độ hạt và va chạm [`s2.3:c024`] | *chờ chấm* |
+| q05 (test, dense) | comparison | 1 search "difference between anatomy and physiology" → `s1.1:c000`, `s1.1:c008`, `s1.1:c009` | Anatomy nghiên cứu cấu trúc, physiology nghiên cứu chức năng [`s1.1:c008`, `s1.1:c009`] | *chờ chấm* |
+| q09 (test, dense) | direct | 1 search "six levels of structural organization of the human body" → `s1.2:c000`, `s1.2:c001`, `s1.2:c002` | Nêu "six levels" nhưng chỉ liệt kê 5 (cells, tissues, organs, organ systems, organisms) [`s1.2:c001`] | *chờ chấm* (lưu ý: thiếu chemical level) |
+| q16 (test, dense) | direct | 1 search "anatomical position" → `s1.6:c004`, `s1.6:c000`, `s9.5:c025` | Mô tả tư thế giải phẫu và lý do quan trọng [`s1.6:c004`] | *chờ chấm* |
+| q30 (test, dense) | direct | 1 search "pH range of human blood" → `s2.4:c035`, `s18.1:c019`, `s2.4:c036` | pH máu 7,35–7,45 [`s2.4:c035`, `s18.1:c019`, `s2.4:c036`] | *chờ chấm* |
+| u4 (test, dense) | thiếu evidence | 4 search "chapter 33" → cùng 3 chunk `figure_ocr` (trang 119, 579, 605) mỗi lần | Từ chối: "Không đủ bằng chứng để trả lời." (hết lượt search) | *chờ chấm* |
+| u6 (test, dense) | thiếu evidence | 3 search "positive integer" → `s2.2:c008`, `s1.5:c014`, `s2.2:c009` | Từ chối (không có citation hợp lệ) | *chờ chấm* |
+
+(ID chunk viết tắt, bỏ tiền tố `B:openstax-ap2e-full:`.)
 
 - **Đường dẫn trace, nhãn, lệnh chạy, thời gian và chi phí:**
   - Retrieval dev: `starter/results/dev-{tfidf,bm25,dense,dense-filter,dense-b2000,hybrid,hybrid-w03,hybrid-bm25-w03,dense-rerank,dense-rerank-b2000}/{summary,traces}.json`.
@@ -95,11 +123,18 @@ Tất cả chạy bằng `starter/eval_retrieval.py` trên cùng corpus (7768 ch
     - `python starter/eval_retrieval.py --method dense_rerank --split dev --output starter/results/dev-dense-rerank`
     - `python starter/eval_retrieval.py --method dense --split dev --budget 2000 --output starter/results/dev-dense-b2000`
     - `python starter/eval_retrieval.py --method dense_rerank --split dev --budget 2000 --output starter/results/dev-dense-rerank-b2000`
-  - Retrieval test (*TODO – cần chạy*): `--method tfidf --split test --output starter/results/test-tfidf` và `--method dense --split test --budget 2000 --output starter/results/test-dense-b2000`.
-  - Agent (*TODO – cần chạy*): `python starter/run_agent_bench.py --method <tfidf|dense> --split <dev|test> [--budget 2000] --output starter/results/agent-<split>-<method>`; nhãn: `reviews.json` cùng thư mục; tổng hợp: `python starter/agent_metrics.py --cases data/cases.json --traces <traces.json> --reviews <reviews.json> --split <split> --output <summary.json>`.
+    - `python starter/eval_retrieval.py --method tfidf --split test --output starter/results/test-tfidf`
+    - `python starter/eval_retrieval.py --method dense --split test --budget 2000 --output starter/results/test-dense-b2000`
+  - Agent (`starter/results/agent-{dev,test}-{tfidf,dense}/traces.json`):
+    - `python starter/run_agent_bench.py --method tfidf --split dev --output starter/results/agent-dev-tfidf`
+    - `python starter/run_agent_bench.py --method dense --split dev --budget 2000 --output starter/results/agent-dev-dense`
+    - `python starter/run_agent_bench.py --method tfidf --split test --output starter/results/agent-test-tfidf`
+    - `python starter/run_agent_bench.py --method dense --split test --budget 2000 --output starter/results/agent-test-dense`
+  - Nhãn: `reviews.json` trong từng thư mục agent (template tạo bằng `python starter/make_review_template.py <thư mục>`); tổng hợp: `python starter/agent_metrics.py --cases data/cases.json --traces <traces.json> --reviews <reviews.json> --split <split> --output <summary.json>`. *TODO – chấm nhãn và chạy tổng hợp.*
+  - Lần thử OpenRouter (lỗi 402, model tự động định tuyến) được giữ ở `starter/results/old-openrouter-test-{tfidf,dense}/` để đối chiếu, không dùng trong kết quả.
   - Chuẩn bị dữ liệu: `starter/day6_export.py` → `data/day6_chunks.json`; `starter/convert_day6.py` → `data/converted/`; `starter/make_cases.py` → `data/cases.json`.
 - **Kết quả trước/sau, ví dụ lỗi, đánh đổi và giới hạn:**
-  - Trước/sau: hybrid 1:1 TF-IDF → hybrid 0,3 BM25: Hit@1 9 → 14, Hit@3 15 → 17 (vẫn dưới dense 17/19). Dense → rerank: Hit@1 17 → 18 (q11), Hit@3 19 → 20 (q18), thời gian 88,8 → 221,6 ms. Budget 800 → 2000: Context Evidence dense 18 → 19 (q20), rerank 18 → 20 (q18, q20).
+  - Trước/sau: hybrid 1:1 TF-IDF → hybrid 0,3 BM25: Hit@1 9 → 14, Hit@3 15 → 17 (vẫn dưới dense 17/19). Dense → rerank: Hit@1 17 → 18 (q11), Hit@3 19 → 20 (q18), thời gian 88,8 → 221,6 ms. Budget 800 → 2000: Context Evidence dense 18 → 19 (q20), rerank 18 → 20 (q18, q20). Agent TF-IDF → dense 2000 (test): trả lời 2/10 → 10/10 câu có đáp án, từ chối nhầm 8/10 → 0/10, dừng do hết lượt 14/16 → 4/16.
   - Re-index Day 6 giữa các lần chạy làm thay đổi kết quả dense (index cũ: Hit@1 18/24, Hit@3 20/24; index mới: 17/24, 19/24; q13 đúng hơn, q17 và q11 kém hơn). Mọi so sánh cuối cùng phải dùng cùng một phiên bản index.
   - Giới hạn: metric hit yêu cầu câu evidence nằm nguyên văn trong một chunk, nên đánh giá thấp câu so sánh cần nhiều đoạn (q18, q23, q24, q33). Chỉ có 24 câu dev nên chênh lệch 1 câu (~4%) chưa đủ kết luận chắc chắn. Benchmark dev/test được tạo từ Day 6; *TODO: xác nhận test Day 6 chưa từng dùng để chỉnh hệ thống* (nếu đã dùng, cần tạo test mới theo GUIDE.md). Chunk `figure_ocr` vừa giúp (thông tin trong hình) vừa gây nhiễu (nhãn hình ngắn có score cao: q11, q17, q20). Cần giữ repo Day 6 ở nhánh `feature/paddle-ocr`, commit `e3bbd72` để tái lập. Câu thiếu evidence hiện còn quá xa chủ đề (xem phần Dữ liệu).
 
