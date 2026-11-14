@@ -1,7 +1,9 @@
 """Controller: a real LLM with one `search` tool via an OpenAI-compatible API."""
-import json, os, re
+import json, os, re, time
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import InternalServerError, OpenAI, RateLimitError
+
+RETRY_WAITS = (60, 60, 120, 120)  # seconds; free tiers limit requests per minute (429) or are busy (503)
 
 load_dotenv()
 SYSTEM = ("You answer questions about an openstax textbook using ONLY the retrieved context. "
@@ -21,6 +23,18 @@ class LLMController:
         self.client = OpenAI(base_url=os.getenv("LLM_BASE_URL") or None, api_key=os.environ["LLM_API_KEY"])
         self.model = os.environ["LLM_MODEL"]
         self.tokens = 0
+        self.wait_seconds = 0.0  # time spent waiting on rate limits, reported apart from latency
+
+    def _create(self, **kwargs):
+        for wait in (*RETRY_WAITS, None):
+            try:
+                return self.client.chat.completions.create(**kwargs)
+            except (RateLimitError, InternalServerError) as error:
+                if wait is None:  # still failing after all waits (e.g. daily quota): record as an error
+                    raise RuntimeError(f"{type(error).__name__} after retries: {getattr(error, 'body', '') or error}") from error
+                print(f"  {type(error).__name__} {error.status_code}: waiting {wait}s then retrying", flush=True)
+                time.sleep(wait)
+                self.wait_seconds += wait
 
     def decide(self, question, history):
         messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": question}]
@@ -28,7 +42,7 @@ class LLMController:
             h = history[-1]
             messages.append({"role": "user", "content":
                              f"Searches so far: {h['queries']}\nRetrieved context:\n{h['context'] or '(nothing fit the budget)'}"})
-        resp = self.client.chat.completions.create(model=self.model, messages=messages, tools=TOOLS, temperature=0, max_tokens=512)
+        resp = self._create(model=self.model, messages=messages, tools=TOOLS, temperature=0, max_tokens=512)
         if resp.usage:
             self.tokens += resp.usage.total_tokens
         msg = resp.choices[0].message

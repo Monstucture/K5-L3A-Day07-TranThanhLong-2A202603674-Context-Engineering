@@ -24,15 +24,18 @@ retriever = make(a.method, chunks, a.lexical_weight, a.rerank_model, a.pool)
 controller = LLMController()
 traces = []
 for c in cases:
-    t0, tok0 = time.perf_counter(), controller.tokens
+    t0, tok0, wait0 = time.perf_counter(), controller.tokens, controller.wait_seconds
     try:
         r = run_agent(c["question"], controller, retriever,
                       filters=c.get("filter") if a.method == "dense_filter" else None,
                       max_searches=a.max_searches, top_k=a.top_k, budget=a.budget)
     except Exception as e:  # record connection/model errors; never replace them with a fake answer
         r = {"status": "error", "answer": None, "citations": [], "events": [], "error": f"{type(e).__name__}: {e}"}
+    waited = controller.wait_seconds - wait0
+    # seconds excludes rate-limit waits so latency stays comparable; the wait is kept separately
     traces.append({"query_id": c["id"], "question": c["question"], "model": controller.model, "method": a.method,
-                   **r, "seconds": time.perf_counter() - t0, "tokens": controller.tokens - tok0})
+                   **r, "seconds": time.perf_counter() - t0 - waited, "rate_limit_wait_s": waited,
+                   "tokens": controller.tokens - tok0})
     print(c["id"], r["status"], (r.get("answer") or r.get("error", ""))[:100])
 a.output.mkdir(parents=True, exist_ok=True)
 (a.output / "traces.json").write_text(json.dumps(traces, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
