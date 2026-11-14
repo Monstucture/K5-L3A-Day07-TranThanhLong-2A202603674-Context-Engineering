@@ -2,22 +2,26 @@
 import argparse, json, time
 from pathlib import Path
 from agentic import run_agent
-from eval_retrieval import make
+from eval_retrieval import METHODS, RERANK_MODEL, make
 from llm_controller import LLMController
 
 ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser()
-p.add_argument("--method", required=True, choices=("tfidf", "dense", "dense_filter", "hybrid"))
+p.add_argument("--method", required=True, choices=METHODS)
 p.add_argument("--split", required=True, choices=("dev", "test"))
 p.add_argument("--top-k", type=int, default=3)
 p.add_argument("--budget", type=int, default=800)
 p.add_argument("--max-searches", type=int, default=4)
+p.add_argument("--pool", type=int, default=20)
+p.add_argument("--lexical-weight", type=float, default=1.0)
+p.add_argument("--rerank-model", default=RERANK_MODEL)
 p.add_argument("--output", required=True, type=Path)
 a = p.parse_args()
 
 chunks = json.loads((ROOT / "data/converted/chunks.json").read_text(encoding="utf-8"))
 cases = [c for c in json.loads((ROOT / "data/cases.json").read_text(encoding="utf-8")) if c["split"] == a.split]
-retriever, controller = make(a.method, chunks), LLMController()
+retriever = make(a.method, chunks, a.lexical_weight, a.rerank_model, a.pool)
+controller = LLMController()
 traces = []
 for c in cases:
     t0, tok0 = time.perf_counter(), controller.tokens
