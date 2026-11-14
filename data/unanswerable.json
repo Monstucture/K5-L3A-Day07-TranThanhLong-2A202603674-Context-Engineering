@@ -1,0 +1,6 @@
+[
+  {"id": "u1", "split": "dev",  "question": "Where is the nearest coffee shop?", "expected_behavior": "search_and_abstain", "absence_reason": "Searched the PDF for X and Y; the book never covers ..."},
+  {"id": "u2", "split": "dev",  "question": "What is the capital of France?", "expected_behavior": "search_and_abstain", "absence_reason": "..."},
+  {"id": "u3", "split": "test", "question": "Who wrote '1984'?", "expected_behavior": "search_and_abstain", "absence_reason": "..."},
+  {"id": "u4", "split": "test", "question": "What is chapter 33 about?", "expected_behavior": "search_and_abstain", "absence_reason": "..."}
+]
