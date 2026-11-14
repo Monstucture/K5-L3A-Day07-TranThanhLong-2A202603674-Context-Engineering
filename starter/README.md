@@ -90,6 +90,17 @@ python starter/eval_retrieval.py --method dense --split dev --budget 2000 --outp
 
 `dense_filter` chỉ áp dụng filter có sẵn trong câu hỏi (do người dùng cung cấp), không suy ra từ gold.
 
+Cải thiện thêm:
+
+```bash
+# Hybrid có trọng số: RRF với dense = 1.0, TF-IDF = 0.3
+python starter/eval_retrieval.py --method hybrid --lexical-weight 0.3 --split dev --output starter/results/dev-hybrid-w03
+# Rerank: dense lấy 20 candidate, cross-encoder xếp lại, giữ top-3 (cần: pip install sentence-transformers)
+python starter/eval_retrieval.py --method dense_rerank --split dev --output starter/results/dev-dense-rerank
+```
+
+`dense_rerank` mặc định dùng `cross-encoder/ms-marco-MiniLM-L-6-v2` (tải từ Hugging Face lần đầu, chạy CPU); đổi bằng `--rerank-model`. Trace giữ `retrieval_rank` và `retrieval_score` của dense để so sánh trước/sau rerank.
+
 **Bước 6 – Chạy agent:**
 
 ```bash
