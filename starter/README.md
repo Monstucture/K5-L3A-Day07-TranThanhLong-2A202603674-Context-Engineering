@@ -6,6 +6,12 @@
 | `baseline.py` | TF-IDF lexical baseline, chạy offline |
 | `convert_day6.py` | Chuyển một số trường JSON từ Day 6 |
 | `agent_metrics.py` | Tổng hợp nhãn đánh giá do bạn tự chấm |
+| `day6_retriever.py` | Dense retriever: import `MyEmbedder` và `PgVectorStore` từ repo Day 6, trả chunk theo schema Day 7 |
+| `day6_export.py` | Xuất chunk strategy B từ pgvector Day 6 ra `data/day6_chunks.json` |
+| `make_cases.py` | Gộp câu có đáp án và câu thiếu evidence thành `data/cases.json` (không chứa gold) |
+| `eval_retrieval.py` | Benchmark retrieval: `tfidf`, `dense`, `dense_filter`, `hybrid` (RRF) |
+| `llm_controller.py` | `Controller.decide` dùng LLM thật qua API tương thích OpenAI, một tool `search` |
+| `run_agent_bench.py` | Chạy agent trên một split, ghi `traces.json` cho `agent_metrics.py` |
 
 Starter **chưa phải solution hoàn chỉnh**. Bạn phải nối model và vector store thật, triển khai ít nhất 3 phương pháp retrieval do bạn chọn, gồm dense trên vector store Day 6. Mock chỉ dùng để test code.
 
@@ -31,14 +37,66 @@ Kết quả có `summary.json` và `traces.json`. Dữ liệu mẫu chỉ có m�
 
 ## 3. Dùng dữ liệu Day 6
 
-Xuất chunk và câu hỏi thành hai JSON array. Starter Day 6 không quy định tên bảng hay cách xuất; bạn cần tự thực hiện. Nếu chunk có `chunk_id`, `document_id`, `source`, `page`, `text`, `metadata` và câu hỏi có `gold_source_id`, `gold_page`, `evidence_quote`, chạy:
+Bài này dùng repo Day 6 `K5-L3A-Day06-TranThanhLong-2A202603674-DataIngestionEngineering`, nhánh **`feature/paddle-ocr`** (full book + OCR hình), đặt cạnh repo Day 7:
+
+| Thành phần Day 6 | Giá trị |
+|---|---|
+| Tài liệu | OpenStax *Anatomy and Physiology 2e*, bản đầy đủ (CC BY 4.0) |
+| Vector store | PostgreSQL 16 + pgvector 0.8.7 (Docker, project `day6_student_starter`, cổng `127.0.0.1:55433`, bảng `chunks`) |
+| Embedding | Ollama `qwen3-embedding:4b`, 2560 chiều; query có instruction Qwen3 |
+| Index dùng ở Day 7 | strategy `B` (chunk theo section, ≤ 500 ký tự): 7768 chunk (6675 `text` + 1093 `figure_ocr`) |
+| Câu hỏi | `benchmark/questions_full_book.json` (34 câu: 24 dev, 10 test) |
+
+**Bước 1 – Khởi động Day 6.** Trong thư mục `starter/` của repo Day 6 (luôn dùng đúng `-p`, vì volume dữ liệu gắn với tên project):
 
 ```bash
-python3 starter/convert_day6.py --chunks <day6_chunks.json> --questions <day6_questions.json> --output starter/data/converted
-python3 starter/baseline.py --chunks starter/data/converted/chunks.json --questions starter/data/converted/questions.json --split dev --output starter/results/dev-tfidf
+docker compose -p day6_student_starter up -d --wait
+ollama list   # phải có qwen3-embedding:4b
 ```
 
-Thay phần trong `< >` bằng đường dẫn thật. Script chỉ đổi tên trường, không tự truy cập database hay đoán evidence. Nếu cấu trúc khác, tự viết adapter. Đối chiếu lại nguồn, trang và evidence.
+Giữ repo Day 6 ở nhánh `feature/paddle-ocr`: `day6_retriever.py` import code Day 6 trực tiếp, và `store.py` ở `main` không trả cột `content_type`.
+
+**Bước 2 – Tạo `.env`** ở thư mục gốc Day 7 từ [`.env.example`](../.env.example) (`DATABASE_URL`, `EMBEDDING_MODEL`, `DAY6_STARTER`, `LLM_*`). Không commit `.env`.
+
+**Bước 3 – Kiểm tra kết nối dense** (chạy trong `starter/`, đã kích hoạt `.venv`):
+
+```bash
+python -c "from day6_retriever import Day6Retriever; print([(r['id'], r['page'], round(r['score'], 3)) for r in Day6Retriever().search('What is human anatomy?')])"
+```
+
+**Bước 4 – Xuất và chuyển dữ liệu** (từ thư mục gốc Day 7):
+
+```bash
+python starter/day6_export.py
+python starter/convert_day6.py --chunks data/day6_chunks.json --questions ../K5-L3A-Day06-TranThanhLong-2A202603674-DataIngestionEngineering/benchmark/questions_full_book.json --output data/converted
+python starter/make_cases.py
+```
+
+- `day6_export.py` đọc strategy B từ pgvector → `data/day6_chunks.json`, gồm `metadata.page_end`, `chapter`, `section`, `content_type`.
+- `convert_day6.py` đổi tên trường (`chunk_id`→`id`, `document_id`→`source_id`, `gold_source_id/gold_page/evidence_quote`→`gold`) → `data/converted/`. Trường `filter` (ví dụ `{"chapter": 2}`) của câu hỏi Day 6 được giữ nguyên.
+- `make_cases.py` gộp `data/converted/questions.json` và `data/unanswerable.json` → `data/cases.json` (không chứa gold).
+
+Một số chunk Day 6 trải qua hai trang (`page` = trang đầu, `metadata.page_end` = trang cuối); `hit()` trong `baseline.py` chấp nhận trang gold nằm trong khoảng này.
+
+**Bước 5 – Benchmark retrieval trên dev:**
+
+```bash
+python starter/eval_retrieval.py --method tfidf --split dev --output starter/results/dev-tfidf
+python starter/eval_retrieval.py --method dense --split dev --output starter/results/dev-dense
+python starter/eval_retrieval.py --method hybrid --split dev --output starter/results/dev-hybrid
+python starter/eval_retrieval.py --method dense_filter --split dev --output starter/results/dev-dense-filter
+python starter/eval_retrieval.py --method dense --split dev --budget 2000 --output starter/results/dev-dense-b2000
+```
+
+`dense_filter` chỉ áp dụng filter có sẵn trong câu hỏi (do người dùng cung cấp), không suy ra từ gold.
+
+**Bước 6 – Chạy agent:**
+
+```bash
+python starter/run_agent_bench.py --method dense --split dev --budget 2000 --output starter/results/agent-dev-dense
+```
+
+Đối chiếu lại nguồn, trang và evidence trong trace; khớp nguyên văn bằng code không thay thế đánh giá thủ công.
 
 `--split dev` chỉ chấm dev. Sau khi chốt cấu hình, dùng `--split test` và chọn thư mục kết quả khác. Nếu test Day 6 từng dùng để chỉnh hệ thống, tạo test mới theo [GUIDE.md](../GUIDE.md). Baseline mẫu dùng evidence nằm trong một chunk và context từ top-3; cần mở rộng hoặc tự đánh giá nếu dùng multi-hop, context từ nhiều lượt hay schema khác. Khớp nguyên văn bằng code không thay thế đánh giá thủ công.
 
