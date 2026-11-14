@@ -1,0 +1,282 @@
+[
+  {
+    "id": "q01",
+    "split": "dev",
+    "question": "What is human anatomy?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q02",
+    "split": "dev",
+    "question": "Compared with a pH 5 liquid, how much more acidic is a pH 4 liquid?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q03",
+    "split": "dev",
+    "question": "Under what condition is positive feedback normal in the body?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q04",
+    "split": "test",
+    "question": "In the chemistry chapter, how does increasing pressure affect reactions?",
+    "answerable": true,
+    "filter": {
+      "chapter": 2
+    }
+  },
+  {
+    "id": "q05",
+    "split": "test",
+    "question": "What is the difference between anatomy and physiology?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q06",
+    "split": "test",
+    "question": "Differentiate between gross anatomy, microscopic anatomy, cytology, and histology.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q07",
+    "split": "dev",
+    "question": "What is the difference between regional anatomy and systemic anatomy?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q08",
+    "split": "dev",
+    "question": "Explain the relationship between form and function in the human body.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q09",
+    "split": "test",
+    "question": "Identify the six levels of structural organization of the human body, from simplest to most complex.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q10",
+    "split": "dev",
+    "question": "Differentiate between a cell, tissue, organ, and organ system.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q11",
+    "split": "dev",
+    "question": "Which traits does the textbook treat as the defining features of human life?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q12",
+    "split": "dev",
+    "question": "In the introductory chapter on the human body, how is metabolism defined in terms of anabolism and catabolism?",
+    "answerable": true,
+    "filter": {
+      "chapter": 1
+    }
+  },
+  {
+    "id": "q13",
+    "split": "dev",
+    "question": "What are the four requirements for human survival?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q14",
+    "split": "dev",
+    "question": "In the introductory chapter on the human body, why must body temperature stay within a narrow range?",
+    "answerable": true,
+    "filter": {
+      "chapter": 1
+    }
+  },
+  {
+    "id": "q15",
+    "split": "test",
+    "question": "Explain homeostasis and distinguish between negative and positive feedback mechanisms.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q16",
+    "split": "test",
+    "question": "Describe the anatomical position and explain why it is important.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q17",
+    "split": "dev",
+    "question": "Differentiate between anterior, posterior, superior, inferior, medial, lateral, proximal, and distal.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q18",
+    "split": "dev",
+    "question": "What are the three primary anatomical planes, and how does each divide the body?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q19",
+    "split": "test",
+    "question": "What kinds of body parts show up best on an X-ray, and what is the downside of X-ray exposure?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q20",
+    "split": "dev",
+    "question": "From most to least common, which four elements make up most of the human body?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q21",
+    "split": "dev",
+    "question": "Describe the structure of an atom and explain the roles of its three major subatomic particles.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q22",
+    "split": "dev",
+    "question": "What makes two atoms of the same element isotopes of each other?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q23",
+    "split": "dev",
+    "question": "Differentiate between cations and anions. How are they formed?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q24",
+    "split": "dev",
+    "question": "Compare ionic, covalent, and hydrogen bonds.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q25",
+    "split": "dev",
+    "question": "What is a polar molecule, and why is water considered polar?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q26",
+    "split": "dev",
+    "question": "In the chemistry chapter, which forms of energy besides chemical energy are important in human functioning?",
+    "answerable": true,
+    "filter": {
+      "chapter": 2
+    }
+  },
+  {
+    "id": "q27",
+    "split": "dev",
+    "question": "Differentiate between synthesis, decomposition, and exchange chemical reactions.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q28",
+    "split": "dev",
+    "question": "What are the most important catalysts in the human body, and how do they speed up chemical reactions?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q29",
+    "split": "test",
+    "question": "In the chemistry chapter, why is water able to dissolve so many substances?",
+    "answerable": true,
+    "filter": {
+      "chapter": 2
+    }
+  },
+  {
+    "id": "q30",
+    "split": "test",
+    "question": "Within what pH range is human blood normally kept, and why is that slightly basic pH useful?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q31",
+    "split": "test",
+    "question": "Which four families of carbon-based molecules matter most for how the body is built and works?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q32",
+    "split": "dev",
+    "question": "Differentiate between monosaccharides, disaccharides, and polysaccharides. Explain how carbohydrate units are joined and separated.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q33",
+    "split": "dev",
+    "question": "Compare triglycerides, phospholipids, steroids, and proteins in terms of their structures and functions.",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "q34",
+    "split": "dev",
+    "question": "What three components make up a molecule of ATP?",
+    "answerable": true,
+    "filter": null
+  },
+  {
+    "id": "u1",
+    "split": "dev",
+    "question": "Where is the nearest coffee shop?",
+    "expected_behavior": "search_and_abstain",
+    "absence_reason": "Searched the PDF for X and Y; the book never covers ...",
+    "answerable": false
+  },
+  {
+    "id": "u2",
+    "split": "dev",
+    "question": "What is the capital of France?",
+    "expected_behavior": "search_and_abstain",
+    "absence_reason": "...",
+    "answerable": false
+  },
+  {
+    "id": "u3",
+    "split": "test",
+    "question": "Who wrote '1984'?",
+    "expected_behavior": "search_and_abstain",
+    "absence_reason": "...",
+    "answerable": false
+  },
+  {
+    "id": "u4",
+    "split": "test",
+    "question": "What is chapter 33 about?",
+    "expected_behavior": "search_and_abstain",
+    "absence_reason": "...",
+    "answerable": false
+  }
+]
