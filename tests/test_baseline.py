@@ -38,6 +38,11 @@ class BaselineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(self.chunks, [{**self.q, 'gold': [wrong]}])
 
+    def test_chunk_spanning_pages(self):
+        spanning = {**chunk('s', 'bảy ngày', page=1), 'metadata': {'page_end': 2}}
+        self.assertTrue(hit(spanning, [{'source_id': 'doc', 'page': 2, 'evidence': 'bảy ngày'}]))
+        self.assertFalse(hit(spanning, [{'source_id': 'doc', 'page': 3, 'evidence': 'bảy ngày'}]))
+
     def test_budget_dedup_and_empty_query(self):
         context, ids = pack_context([self.chunks[0], self.chunks[0]], 800)
         self.assertEqual(ids, ['a'])

@@ -18,5 +18,5 @@ class Day6Retriever:
         # Map Day 06 columns to the Day 07 chunk format (data/README.md)
         return [{"id": r["chunk_id"], "source_id": r["document_id"], "source": r["source"],
                  "page": r["page"], "text": r["text"], "score": float(r["score"]),
-                 "metadata": {k: r[k] for k in ("chapter", "section", "section_title", "content_type")}}
+                 "metadata": {k: r[k] for k in ("page_end", "chapter", "section", "section_title", "content_type")}}
                 for r in rows]
