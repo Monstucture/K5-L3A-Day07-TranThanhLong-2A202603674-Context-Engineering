@@ -251,7 +251,7 @@
     "id": "u1",
     "split": "dev",
     "question": "Where is the nearest coffee shop?",
-    "expected_behavior": "search_and_abstain",
+    "expected_behavior": "search and if find no relevant results abstain",
     "absence_reason": "Searched the PDF for X and Y; the book never covers ...",
     "answerable": false
   },
@@ -259,24 +259,56 @@
     "id": "u2",
     "split": "dev",
     "question": "What is the capital of France?",
-    "expected_behavior": "search_and_abstain",
-    "absence_reason": "...",
+    "expected_behavior": "search and if find no relevant results abstain",
+    "absence_reason": "Searched the PDF for X and Y; the book never covers the capital of the world ...",
     "answerable": false
   },
   {
     "id": "u3",
     "split": "test",
     "question": "Who wrote '1984'?",
-    "expected_behavior": "search_and_abstain",
-    "absence_reason": "...",
+    "expected_behavior": "search and if find no relevant results abstain",
+    "absence_reason": "Searched the PDF for X and Y; the book never covers the author of '1984' or the book itself ...",
     "answerable": false
   },
   {
     "id": "u4",
     "split": "test",
     "question": "What is chapter 33 about?",
-    "expected_behavior": "search_and_abstain",
-    "absence_reason": "...",
+    "expected_behavior": "search and summarize the content if no chapter found then abstain",
+    "absence_reason": "Searched the PDF for chapter 33; the book never covers chapter 33 ...",
+    "answerable": false
+  },
+  {
+    "id": "u5",
+    "split": "test",
+    "question": "What is the meaning of life?",
+    "expected_behavior": "search and if find no relevant results abstain",
+    "absence_reason": "Searched the PDF for X and Y; the book never covers the meaning of life ...",
+    "answerable": false
+  },
+  {
+    "id": "u6",
+    "split": "test",
+    "question": "Return true if the input is a positive integer, false otherwise.",
+    "expected_behavior": "search and if find no relevant results abstain",
+    "absence_reason": "Searched the PDF for X and Y; the book never covers complex numbers or the square root of negative numbers ...",
+    "answerable": false
+  },
+  {
+    "id": "u7",
+    "split": "test",
+    "question": "What is the airspeed velocity of an unladen swallow?",
+    "expected_behavior": "search and if find no relevant results abstain",
+    "absence_reason": "Searched the PDF for X and Y; the book never covers the airspeed velocity of an unladen swallow ...",
+    "answerable": false
+  },
+  {
+    "id": "u8",
+    "split": "test",
+    "question": "Write hello world in Python.",
+    "expected_behavior": "search and if find no relevant results abstain",
+    "absence_reason": "Searched the PDF for X and Y; the book never covers programming or Python ...",
     "answerable": false
   }
 ]
